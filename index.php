@@ -16,7 +16,7 @@
     </div>
 </div>
 
-<script src="js/index.js"></script>
+<script src="js/index.js?<?php echo time(); ?>"></script>
 <script>
     function runGame(startImmediatly) {
         var game = new SeeBattle('gameArea');

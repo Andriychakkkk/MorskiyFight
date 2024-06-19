@@ -55,6 +55,7 @@ if (!Function.prototype.bind) {
         }
 
         this._pcShipsMap = null;
+        this._pcShipsMapStatus = null;
         this._userShipsMap = null;
         this._gameStopped = false;
 
@@ -248,31 +249,45 @@ if (!Function.prototype.bind) {
 
             var shipsConfiguration = JSON.parse(JSON.stringify(this.shipsConfiguration));
             var allShipsPlaced = false;
-            while(allShipsPlaced === false){
+            while(allShipsPlaced === false) {
                 var xPoint = this.getRandomInt(0, this.gameFieldBorderX.length);
                 var yPoint = this.getRandomInt(0, this.gameFieldBorderY.length);
-                if(this.isPointFree(map, xPoint, yPoint) === true){
-                    if(this.canPutHorizontal(map, xPoint, yPoint, shipsConfiguration[0].pointCount, this.gameFieldBorderX.length)){
-                        for(var i=0;i<shipsConfiguration[0].pointCount;i++){
+                map[yPoint][xPoint].count = 0;
+                if (this.isPointFree(map, xPoint, yPoint) === true) {
+                    if (this.canPutHorizontal(map, xPoint, yPoint, shipsConfiguration[0].pointCount, this.gameFieldBorderX.length)) {
+                        for (var i = 0; i < shipsConfiguration[0].pointCount; i++) {
                             map[yPoint][xPoint + i] = this.CELL_WITH_SHIP;
                         }
-                    }else if(this.canPutVertical(map, xPoint, yPoint, shipsConfiguration[0].pointCount, this.gameFieldBorderY.length)){
-                        for(var i=0;i<shipsConfiguration[0].pointCount;i++){
+                    } else if (this.canPutVertical(map, xPoint, yPoint, shipsConfiguration[0].pointCount, this.gameFieldBorderY.length)) {
+                        for (var i = 0; i < shipsConfiguration[0].pointCount; i++) {
                             map[yPoint + i][xPoint] = this.CELL_WITH_SHIP;
                         }
-                    }else{
+                    } else {
                         continue;
                     }
 
                     shipsConfiguration[0].maxShips--;
-                    if(shipsConfiguration[0].maxShips < 1){
+                    if (shipsConfiguration[0].maxShips < 1) {
                         shipsConfiguration.splice(0, 1);
                     }
-                    if(shipsConfiguration.length === 0){
+                    if (shipsConfiguration.length === 0) {
                         allShipsPlaced = true;
                     }
                 }
             }
+
+            for(let i = 0; i < map.length; i++) {
+                let allCount = 0;
+                map[i].forEach((idx) => {
+                    if(idx) {
+                        allCount++;
+                    }
+                });
+                map[i]['count'] = 0;
+                map[i]['allCount'] = allCount;
+                map[i]['range'] = [];
+            }
+
             return map;
         },
         getRandomInt: function(min, max) {
@@ -372,6 +387,7 @@ if (!Function.prototype.bind) {
             var firedEl = e.target || e.srcElement;
             var x = firedEl.getAttribute('data-x');
             var y = firedEl.getAttribute('data-y');
+
             if(this._pcShipsMap[y][x] === this.CELL_EMPTY){
                 firedEl.innerHTML = this.getFireFailTemplate();
                 this.prepareToPcFire();
@@ -380,6 +396,48 @@ if (!Function.prototype.bind) {
                 firedEl.setAttribute('class', 'ship');
                 this._userHits++;
                 this.updateToolbar();
+                this._pcShipsMap[y]['count']++;
+
+                let rangeObject = {
+                    x: Number(x),
+                    y: Number(y)
+                };
+
+                this._pcShipsMap[y]['range'].push(rangeObject);
+
+                console.log(this._pcShipsMap[y]);
+                if(this._pcShipsMap[y]['allCount'] > 0 && this._pcShipsMap[y]['count'] === this._pcShipsMap[y]['allCount']) {
+                    this._pcShipsMap[y]['range'].forEach((elem) => {
+                        // Coordinates of the current element
+                        let x = elem.x;
+                        let y = elem.y;
+
+                        // Update the cell above
+                        this.updateCell(x, y - 1);
+
+                        // Update the cell below
+                        this.updateCell(x, y + 1);
+
+                        // Update the cell to the left
+                        this.updateCell(x - 1, y);
+
+                        // Update the cell to the right
+                        this.updateCell(x + 1, y);
+
+                        // Update the cell to the top-left diagonal
+                        this.updateCell(x - 1, y - 1);
+
+                        // Update the cell to the top-right diagonal
+                        this.updateCell(x + 1, y - 1);
+
+                        // Update the cell to the bottom-left diagonal
+                        this.updateCell(x - 1, y + 1);
+
+                        // Update the cell to the bottom-right diagonal
+                        this.updateCell(x + 1, y + 1);
+                    });
+                }
+
                 if(this._userHits >= this._hitsForWin){
                     this.stopGame();
                 }
@@ -389,6 +447,13 @@ if (!Function.prototype.bind) {
         _pcGoing: false,
         isPCGoing: function(){
             return this._pcGoing;
+        },
+
+        updateCell: function(x, y) {
+            let cell = document.querySelector(`[data-x="${x}"][data-y="${y}"]`);
+            if (cell && cell.textContent !== 'X') {
+                cell.innerHTML = this.getFireFailTemplate();
+            }
         },
 
         /**
@@ -470,4 +535,3 @@ if (!Function.prototype.bind) {
 
 
 }));
-
